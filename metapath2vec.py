@@ -21,4 +21,6 @@ for epoch in range(200):
 embeddings = model.get_embeddings()
 
 # Use the embeddings for downstream tasks
-# ...
+# ..
+
+##test
