@@ -24,3 +24,8 @@ embeddings = model.get_embeddings()
 # ..
 
 ##test
+
+# Test the model
+model.eval()
+with torch.no_grad():
+    test_loss = model.loss(data.x, data.edge_index)
