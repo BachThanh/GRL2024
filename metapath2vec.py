@@ -1,31 +1,30 @@
-import torch
-import torch_geometric
-from torch_geometric.nn.models import metapath2vec
+from typing import Dict, List, Optional, Tuple 
 
-# Create a graph dataset
-data = torch_geometric.datasets.Planetoid(root='/tmp/Cora', name='Cora')
+import torch 
+from torch import Tensor
+from torch.nn import Embedding
+from torch.utils.data import DataLoader
 
-# Define the metapath2vec model
-model = metapath2vec.MetaPath2Vec(data.num_features, embedding_dim=128)
+from torch_geometric.utils import EdgeType, NodeType, OptTensor
+from torch_geometric.utils import sort_edge_index
+from torch_geometric.utils.sparse import index2ptr
 
-# Train the model
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-model.train()
-for epoch in range(200):
-    optimizer.zero_grad()
-    loss = model.loss(data.x, data.edge_index)
-    loss.backward()
-    optimizer.step()
+EPS = 1e-15
 
-# Get the learned node embeddings
-embeddings = model.get_embeddings()
+class MetaPath2Vec(torch.nn.Module):
+    def __init__(self,
+                 edge_index_dict: Dict[EdgeType, Tensor],
+                 embedding_dim: int,
+                 metapath: List[EdgeType],
+                 walk_length: int,
+                 context_size: int,
+                 walks_per_node: int = 1,
+                 num_negative_samples: int = 1,
+                 num_nodes_dict: Optional[Dict[NodeType, int]] = None,
+                 sparse: bool = False,):
+        super().__init__()
 
-# Use the embeddings for downstream tasks
-# ..
-
-##test
-
-# Test the model
-model.eval()
-with torch.no_grad():
-    test_loss = model.loss(data.x, data.edge_index)
+        if num_nodes_dict is None:
+            num_nodes_dict = {}
+            for keys, edge_index in edge_index_dict.items():
+                num_nodes_dict[keys] = max(N, edge_)
