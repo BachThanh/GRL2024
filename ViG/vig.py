@@ -10,7 +10,7 @@ from timm.models.helpers import load_pretrained
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from timm.models.registry import register_model
 
-
+# Model configuration
 def _cfg(url='', **kwargs):
     return {
         'url': url,
@@ -29,7 +29,8 @@ default_cfgs = {
     ),
 }
 
-
+# Feed Forward Network (FFN)
+# 1×1 Conv → BN → activation → 1×1 Conv → BN → residual connection
 class FFN(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act='relu', drop_path=0.0):
         super().__init__()
@@ -54,7 +55,7 @@ class FFN(nn.Module):
         x = self.drop_path(x) + shortcut
         return x
 
-
+# Transform input image to a high-dimensional feature map
 class Stem(nn.Module):
     # Image to Visual Word Embedding
     def __init__(self, img_size=224, in_dim=3, out_dim=768, act='relu'):
@@ -85,14 +86,14 @@ class DeepGCN(torch.nn.Module):
     def __init__(self, opt):
         super(DeepGCN, self).__init__()
         channels = opt.n_filters
-        k = opt.k
+        k = opt.k # number of neighbors
         act = opt.act
-        norm = opt.norm
+        norm = opt.norm # Normalization type: batch or instance
         bias = opt.bias
         epsilon = opt.epsilon
         stochastic = opt.use_stochastic
         conv = opt.conv
-        self.n_blocks = opt.n_blocks
+        self.n_blocks = opt.n_blocks # Number of Graph + FFN blocks
         drop_path = opt.drop_path
         
         self.stem = Stem(out_dim=channels, act=act)
@@ -103,7 +104,7 @@ class DeepGCN(torch.nn.Module):
         print('num_knn', num_knn)
         max_dilation = 196 // max(num_knn)
         
-        self.pos_embed = nn.Parameter(torch.zeros(1, channels, 14, 14))
+        self.pos_embed = nn.Parameter(torch.zeros(1, channels, 14, 14)) #Positional Embedding
 
         if opt.use_dilation:
             self.backbone = Seq(*[Seq(Grapher(channels, num_knn[i], min(i // 4 + 1, max_dilation), conv, act, norm,
@@ -115,7 +116,7 @@ class DeepGCN(torch.nn.Module):
                                                 bias, stochastic, epsilon, 1, drop_path=dpr[i]),
                                       FFN(channels, channels * 4, act=act, drop_path=dpr[i])
                                      ) for i in range(self.n_blocks)])
-
+        # Prediction head
         self.prediction = Seq(nn.Conv2d(channels, 1024, 1, bias=True),
                               nn.BatchNorm2d(1024),
                               act_layer(act),
